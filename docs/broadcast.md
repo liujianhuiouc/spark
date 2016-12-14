@@ -10,7 +10,7 @@ var broadcastDict = sc.broadcast(dict)
 var rdd = sc.parallelize(Array(1, 2, 3))
 rdd.foreachPartition(x => broadcastDict.value.get(x))
 //手动销毁广播变量，会同时清除掉executor端的
-//如果不手动销毁，ContextCleaner会维护一个弱引用列表,当内存不足的时候，会触发整个系统的广播变量的销毁
+//如果不手动销毁，ContextCleaner会维护一个弱引用列表,当内存不足的时候，会触发driver和executor上的的广播变量的销毁
 broadcastDict.onDestory()
 ```
 
