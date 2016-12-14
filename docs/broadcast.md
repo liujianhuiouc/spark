@@ -14,7 +14,7 @@ broadcastDict.onDestory()
 
 ## 广播变量的机制
 广播变量在序列化的时候，会将本地的数据储存到本地的blockmanager中，存储级别是`MEMORY_AND_DISK`,有的也会直接序列化完毕后存储在本地磁盘上(如HttpBroadcast),当其随着task序列化为字节流传递到执行节点的时候，在executor进行反序列化的过程中，会调用`broadcast.readObject`方法，其主要的逻辑是首先从本地的blockmanager中获取broadcastID对应的block，没有的话再去远端获取，不同的广播变量类型获取的方式不一样,Torrent的实现是采用了懒加载的机制，当需要用到value的时候才会通过`readBroadcastBlock`方法获取数据的详情。
-* http的读取写入方式
+* **http的读取写入方式**
 ```
 /** Used by the JVM when serializing this object. */
   private def writeObject(out: ObjectOutputStream): Unit = Utils.tryOrIOException {
@@ -46,8 +46,9 @@ broadcastDict.onDestory()
     }
   }
   ```
-  * Torrent的方式
+  * **Torrent的方式**
   ```
+   * 懒加载的方式，用到的时候才去远端获取数据
    @transient private lazy val _value: T = readBroadcastBlock()
 
      private def readBroadcastBlock(): T = Utils.tryOrIOException {
