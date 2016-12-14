@@ -17,4 +17,4 @@ broadcastDict.onDestory()
 
 ##广播变量的种类
 当前spark1.6.1主要有两种广播变量类型，分别为`HttpBroadcast`和`TorrentBroadcast`，他们的实现机制不同，http的方式是在driver端开启一个用于广播变量的http服务，广播变量会序列化后作为文件存储到本地的磁盘上，task任务反序列化的时候会通过http的方式来fetch相应的数据信息；由于所有的数据都需要从driver端获取，如果executor数目过多的话，会造成driver端的网络拥塞。TorrentBroadcast参看了bit的方式，随着广播变量在executor上存储，其余的executor也会从已经有的executor上fetch相应的数据信息。二者的类图如下所示
-![broadcast](image/Broadcast.png)
+![broadcast](img/Broadcast.png)
