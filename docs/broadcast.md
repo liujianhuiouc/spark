@@ -53,7 +53,7 @@ broadcastDict.onDestory()
    * 懒加载的方式，用到的时候才去远端获取数据
    @transient private lazy val _value: T = readBroadcastBlock()
 
-     private def readBroadcastBlock(): T = Utils.tryOrIOException {
+   private def readBroadcastBlock(): T = Utils.tryOrIOException {
     TorrentBroadcast.synchronized {
       setConf(SparkEnv.get.conf)
       SparkEnv.get.blockManager.getLocal(broadcastId).map(_.data.next()) match {
