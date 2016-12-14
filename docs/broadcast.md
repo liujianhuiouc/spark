@@ -13,7 +13,8 @@ broadcastDict.onDestory()
 ```
 
 ## 广播变量的机制
-广播变量在序列化的时候，会将本地的数据储存到本地的blockmanager中，存储级别是`MEMORY_AND_DISK`,有的也会直接序列化完毕后存储在本地磁盘上(如HttpBroadcast),当其随着task序列化为字节流传递到执行节点的时候，在executor进行反序列化的过程中，会调用`broadcast.readObject`方法，其主要的逻辑是首先从本地的blockmanager中获取broadcastID对应的block，没有的话再去远端获取，不同的广播变量类型获取的方式不一样。
+广播变量在序列化的时候，会将本地的数据储存到本地的blockmanager中，存储级别是`MEMORY_AND_DISK`,有的也会直接序列化完毕后存储在本地磁盘上(如HttpBroadcast),当其随着task序列化为字节流传递到执行节点的时候，在executor进行反序列化的过程中，会调用`broadcast.readObject`方法，其主要的逻辑是首先从本地的blockmanager中获取broadcastID对应的block，没有的话再去远端获取，不同的广播变量类型获取的方式不一样,Torrent的实现是采用了懒加载的机制，当需要用到value的时候才会通过`readBroadcastBlock`方法获取数据的详情。
+* http的读取写入方式
 ```
 /** Used by the JVM when serializing this object. */
   private def writeObject(out: ObjectOutputStream): Unit = Utils.tryOrIOException {
@@ -45,7 +46,37 @@ broadcastDict.onDestory()
     }
   }
   ```
-  
+  * Torrent的方式
+  ```
+   @transient private lazy val _value: T = readBroadcastBlock()
+
+     private def readBroadcastBlock(): T = Utils.tryOrIOException {
+    TorrentBroadcast.synchronized {
+      setConf(SparkEnv.get.conf)
+      SparkEnv.get.blockManager.getLocal(broadcastId).map(_.data.next()) match {
+        case Some(x) =>
+          x.asInstanceOf[T]
+
+        case None =>
+          logInfo("Started reading broadcast variable " + id)
+          val startTimeMs = System.currentTimeMillis()
+          val blocks = readBlocks()
+          logInfo("Reading broadcast variable " + id + " took" + Utils.getUsedTimeMs(startTimeMs))
+
+          val obj = TorrentBroadcast.unBlockifyObject[T](
+            blocks, SparkEnv.get.serializer, compressionCodec)
+          // Store the merged copy in BlockManager so other tasks on this executor don't
+          // need to re-fetch it.
+          SparkEnv.get.blockManager.putSingle(
+            broadcastId, obj, StorageLevel.MEMORY_AND_DISK, tellMaster = false)
+          obj
+      }
+    }
+  }
+
+  ```
+
+
 
 ## 广播变量的种类
 当前spark1.6.1主要有两种广播变量类型，分别为`HttpBroadcast`和`TorrentBroadcast`，他们的实现机制不同，http的方式是在driver端开启一个用于广播变量的http服务，广播变量会序列化后作为文件存储到本地的磁盘上，task任务反序列化的时候会通过http的方式来fetch相应的数据信息；由于所有的数据都需要从driver端获取，如果executor数目过多的话，会造成driver端的网络拥塞。TorrentBroadcast参看了bit的方式，随着广播变量在executor上存储，其余的executor也会从已经有的executor上fetch相应的数据信息。二者的类图如下所示
