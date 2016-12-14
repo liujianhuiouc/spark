@@ -9,8 +9,8 @@ var dict = Map(1->1, 2->2, 3->3)
 var broadcastDict = sc.broadcast(dict)
 var rdd = sc.parallelize(Array(1, 2, 3))
 rdd.foreachPartition(x => broadcastDict.value.get(x))
-*手动销毁广播变量，会同时清除掉executor端的
-*如果不手动销毁，ContextCleaner会维护一个弱引用列表,当内存不足的时候，会触发整个系统的广播变量的销毁
+//手动销毁广播变量，会同时清除掉executor端的
+//如果不手动销毁，ContextCleaner会维护一个弱引用列表,当内存不足的时候，会触发整个系统的广播变量的销毁
 broadcastDict.onDestory()
 ```
 
@@ -50,7 +50,7 @@ broadcastDict.onDestory()
   ```
   * **Torrent的方式**
   ```
-   * 懒加载的方式，用到的时候才去远端获取数据
+   //懒加载的方式，用到的时候才去远端获取数据
    @transient private lazy val _value: T = readBroadcastBlock()
 
    private def readBroadcastBlock(): T = Utils.tryOrIOException {
